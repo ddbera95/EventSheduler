@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triggers List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center p-6">
+
+    <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-4xl">
+        <h1 class="text-2xl font-bold text-center mb-4">Triggers</h1>
+
+        <!-- Create Trigger Button -->
+        <div class="flex justify-end mb-4">
+            <a href="/events" class="bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600">
+                🔥 Events
+            </a>
+            <a href="/trigger/create" class="bg-green-500 text-white p-2 rounded-md hover:bg-green-600">
+                + Create Trigger
+            </a>
+        </div>
+
+        <!-- Trigger List -->
+        <div id="trigger-list" class="border rounded-md p-4 bg-gray-50">
+            <p id="loading" class="text-center text-gray-500">Loading triggers...</p>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="flex justify-between mt-4">
+            <button id="prevPage" class="bg-blue-500 text-white p-2 rounded-md disabled:opacity-50" disabled>Previous</button>
+            <span id="pageNumber" class="text-lg font-semibold"></span>
+            <button id="nextPage" class="bg-blue-500 text-white p-2 rounded-md disabled:opacity-50">Next</button>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        const pageSize = 5; // Triggers per page
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            await fetchTriggers();
+
+            // Pagination controls
+            document.getElementById("prevPage").addEventListener("click", () => changePage(-1));
+            document.getElementById("nextPage").addEventListener("click", () => changePage(1));
+        });
+
+        // Fetch Triggers from API
+        async function fetchTriggers() {
+            try {
+                const response = await fetch(`/trigger/triggers?page=${currentPage}&size=${pageSize}`);
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.message || "Failed to fetch triggers");
+
+                displayTriggers(result.triggers, result.totalPages);
+            } catch (error) {
+                document.getElementById("loading").innerText = "Error loading triggers.";
+            }
+        }
+
+        // Display Triggers
+        function displayTriggers(triggers, totalPages) {
+            const listContainer = document.getElementById("trigger-list");
+            listContainer.innerHTML = "";
+
+            if (triggers.length === 0) {
+                listContainer.innerHTML = "<p class='text-center text-gray-500'>No triggers found.</p>";
+                return;
+            }
+
+            triggers.forEach(trigger => {
+                const div = document.createElement("div");
+                div.classList.add("p-2", "border-b", "last:border-none", "flex", "justify-between", "items-center");
+
+                div.innerHTML = `
+                    <div>
+                        <strong>${trigger.Title}</strong><br>
+                        <span class="text-gray-600">${trigger.Description}</span><br>
+                        <small class="text-gray-400">Created: ${new Date(trigger.Created).toLocaleString()}</small><br>
+                        <small class="text-gray-400">Type: ${trigger.Type}</small> -
+                        <small class="text-gray-400">Duration: ${formatDuration(trigger.Duration.Duration)}</small>
+                    </div>
+                    <a href="/trigger/create?id=${trigger.ID}" class="bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600">
+                        Edit
+                    </a>
+                `;
+                listContainer.appendChild(div);
+            });
+
+            document.getElementById("pageNumber").innerText = `Page ${currentPage}`;
+            document.getElementById("prevPage").disabled = currentPage === 1;
+            document.getElementById("nextPage").disabled = currentPage >= totalPages;
+        }
+
+        // Change Page
+        async function changePage(step) {
+            currentPage += step;
+            await fetchTriggers();
+        }
+
+         function formatDuration(nanoseconds) {
+            const duration = nanoseconds / 1e9; // Convert nanoseconds to seconds
+            if (duration % 3600 === 0) return `${duration / 3600}h`; // Hours
+            if (duration % 60 === 0) return `${duration / 60}m`; // Minutes
+            return `${duration}s`; // Seconds
+        }
+    </script>
+
+</body>
+</html>

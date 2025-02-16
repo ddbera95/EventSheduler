@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create/Edit Trigger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center p-6">
+
+    <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-3xl">
+        <h1 id="form-title" class="text-2xl font-bold text-center mb-4">Create Trigger</h1>
+
+        <div id="message" class="text-center mb-2 hidden"></div>
+
+        <form id="trigger-form" class="flex flex-col">
+            <label class="font-semibold">Title:</label>
+            <input type="text" id="title" class="p-2 mb-2 border rounded-md" required>
+
+            <label class="font-semibold">Description:</label>
+            <input type="text" id="description" class="p-2 mb-2 border rounded-md" required>
+
+            <label class="font-semibold">API Endpoint (optional):</label>
+            <input type="url" id="api" class="p-2 mb-2 border rounded-md">
+
+            <label class="font-semibold">Payload (optional JSON format):</label>
+            <textarea id="payload" class="p-2 mb-2 border rounded-md"></textarea>
+
+            <label class="font-semibold">Trigger Type:</label>
+            <select id="type" class="p-2 mb-2 border rounded-md">
+                <option value="api">API Trigger</option>
+                <option value="timer">Timer Trigger</option>
+                <option value="ticker">Ticker Trigger</option>
+            </select>
+
+            <label class="font-semibold">Duration (e.g., "10m", "1h"):</label>
+            <input type="text" id="duration" class="p-2 mb-2 border rounded-md" required>
+
+            <button type="submit" id="submit-btn" class="bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600">
+                Create Trigger
+            </button>
+        </form>
+
+        <p class="text-center mt-4">
+            <a href="triggers.html" class="text-blue-500 underline">Back to Triggers List</a>
+        </p>
+    </div>
+
+    <script>
+        let triggerId = null; // Store trigger ID if editing
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Check if we are in edit mode (query param `id` exists)
+            const urlParams = new URLSearchParams(window.location.search);
+            triggerId = urlParams.get("id");
+
+            if (triggerId) {
+                document.getElementById("form-title").innerText = "Edit Trigger";
+                document.getElementById("submit-btn").innerText = "Update Trigger";
+                await loadTrigger(triggerId); // Fetch trigger data
+            }
+
+            document.getElementById("trigger-form").addEventListener("submit", async (e) => {
+                e.preventDefault();
+                await submitTrigger();
+            });
+        });
+
+        // 📌 Load trigger details for editing
+        async function loadTrigger(id) {
+            try {
+                const response = await fetch(`/trigger/get/${id}`);
+                const trigger = await response.json();
+
+                if (!response.ok) throw new Error(trigger.message || "Failed to load trigger");
+
+                // Pre-fill form fields with existing data
+                document.getElementById("title").value = trigger.Title;
+                document.getElementById("description").value = trigger.Description;
+                document.getElementById("api").value = trigger.Api || "";
+                document.getElementById("payload").value = trigger.Payload || "";
+                document.getElementById("type").value = trigger.Type;
+                document.getElementById("duration").value = formatDuration(trigger.Duration.Duration);;
+            } catch (error) {
+                console.error(error);
+                alert("Error loading trigger details.");
+                window.location.href = "triggers.html"; // Redirect if error
+            }
+        }
+
+        function formatDuration(nanoseconds) {
+            const duration = nanoseconds / 1e9; // Convert nanoseconds to seconds
+            if (duration % 3600 === 0) return `${duration / 3600}h`; // Hours
+            if (duration % 60 === 0) return `${duration / 60}m`; // Minutes
+            return `${duration}s`; // Seconds
+        }
+
+        // 📌 Create or Update trigger
+        async function submitTrigger() {
+            const messageDiv = document.getElementById("message");
+            messageDiv.classList.add("hidden");
+
+            // Collect form data
+            const triggerData = {
+                title: document.getElementById("title").value,
+                description: document.getElementById("description").value,
+                api: document.getElementById("api").value || null,
+                payload: document.getElementById("payload").value || null,
+                type: document.getElementById("type").value,
+                duration: document.getElementById("duration").value,
+                user_id: 12345  // Change dynamically based on logged-in user
+            };
+
+            const url = triggerId ? `/trigger/triggers/${triggerId}` : "/trigger/create";
+            const method = triggerId ? "PUT" : "POST";
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(triggerData),
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    messageDiv.innerText = triggerId ? "Trigger updated successfully!" : "Trigger created successfully!";
+                    messageDiv.classList.remove("hidden", "text-red-500");
+                    messageDiv.classList.add("text-green-500");
+
+                    // Redirect to triggers list after success
+                    setTimeout(() => {
+                        window.location.href = "/trigger";
+                    }, 100);
+                } else {
+                    messageDiv.innerText = result.message || "Error saving trigger.";
+                    messageDiv.classList.remove("hidden", "text-green-500");
+                    messageDiv.classList.add("text-red-500");
+                }
+            } catch (error) {
+                messageDiv.innerText = "Failed to connect to server.";
+                messageDiv.classList.remove("hidden");
+                messageDiv.classList.add("text-red-500");
+            }
+        }
+    </script>
+
+</body>
+</html>

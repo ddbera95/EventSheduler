@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center p-6">
+
+    <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-4xl">
+        <h1 class="text-2xl font-bold text-center mb-4">Event List</h1>
+
+        <!-- Event Table -->
+        <div class="overflow-x-auto">
+            <table class="w-full border border-gray-300 bg-gray-50 rounded-md">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="py-2 px-4 border">Type</th>
+                        <th class="py-2 px-4 border">Title</th>
+                        <th class="py-2 px-4 border">User ID</th>
+                        <th class="py-2 px-4 border">Timestamp</th>
+                        <th class="py-2 px-4 border">Payload</th>
+                        <th class="py-2 px-4 border">Execution</th>
+                    </tr>
+                </thead>
+                <tbody id="event-table-body" class="text-center">
+                    <tr><td colspan="6" class="p-4 text-gray-500">Loading events...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="flex justify-between mt-4">
+            <button id="prevPage" class="bg-blue-500 text-white p-2 rounded-md disabled:opacity-50" disabled>Previous</button>
+            <span id="pageNumber" class="text-lg font-semibold"></span>
+            <button id="nextPage" class="bg-blue-500 text-white p-2 rounded-md disabled:opacity-50">Next</button>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        const pageSize = 50; // Events per page
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            await fetchEvents();
+
+            // Pagination controls
+            document.getElementById("prevPage").addEventListener("click", () => changePage(-1));
+            document.getElementById("nextPage").addEventListener("click", () => changePage(1));
+        });
+
+        // Fetch events from API
+        async function fetchEvents() {
+            try {
+                const response = await fetch(`/events/events?page=${currentPage}&size=${pageSize}`);
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.message || "Failed to fetch events");
+
+                displayEvents(result.events, result.total);
+            } catch (error) {
+                document.getElementById("event-table-body").innerHTML = "<tr><td colspan='6' class='p-4 text-red-500'>Error loading events.</td></tr>";
+            }
+        }
+
+        // Display events
+        function displayEvents(events, total) {
+            const tbody = document.getElementById("event-table-body");
+            tbody.innerHTML = "";
+
+            if (events.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='6' class='p-4 text-gray-500'>No events found.</td></tr>";
+                return;
+            }
+
+            events.forEach(event => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td class="py-2 px-4 border">${event.Type}</td>
+                    <td class="py-2 px-4 border">${event.TriggerId}</td>
+                    <td class="py-2 px-4 border">${event.UserId}</td>
+                    <td class="py-2 px-4 border">${new Date(event.Timestamp).toLocaleString()}</td>
+                    <td class="py-2 px-4 border">${event.Payload || "N/A"}</td>
+                    <td class="py-2 px-4 border">${event.Execution}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById("pageNumber").innerText = `Page ${currentPage}`;
+            document.getElementById("prevPage").disabled = currentPage === 1;
+            document.getElementById("nextPage").disabled = currentPage * pageSize >= total;
+        }
+
+        // Change Page
+        async function changePage(step) {
+            currentPage += step;
+            await fetchEvents();
+        }
+    </script>
+
+</body>
+</html>
